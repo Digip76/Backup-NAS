@@ -1,0 +1,16 @@
+{
+    "mysql_user": "root",
+    "backup_directory": "/backup/backup_mysql",
+    "log_directory": "/backup/log",
+    "rsync_directories": [
+        "/data/Documenten",
+        "/data/Photo",
+        "/data/iCloud",
+        "/data/Music",
+        "/data/Software",
+        "/data/www/htdocs"
+    ],
+    "exclude_directories": ["spotweb"],
+    "onedrive_remote": "onedrive:",
+    "onedrive_backup_directory": "/backup_onedrive"
+}
