@@ -1,0 +1,59 @@
+#echo Starting backup ....
+
+SUFFIX=$(date +%F_%H%M%S)
+
+# Dump van MySQL databases
+#mysqldump --all-databases --ignore-table=mysql.event  >/backup/backup_mysql/mysql_$SUFFIX.sql
+# Update 2020-05-03
+mysqldump --all-databases --ignore-table=mysql.event -u root >/backup/backup_mysql/mysql_$SUFFIX.sql
+
+# Zippen van MySQL dump en vervolgens verwideren van dump
+zip -q -r /backup/backup_mysql/mysql_$SUFFIX.zip /backup/backup_mysql/mysql_$SUFFIX.sql
+rm /backup/backup_mysql/mysql_$SUFFIX.sql
+
+# File backup  --quit verwijderd
+rsync   --update -braz --delete --progress --backup-dir=$SUFFIX --exclude spotweb /data/Documenten /data/Photo /data/iCloud /data/Music /data/Software /data/www/htdocs /backup/backup001  > /backup/log/rsync.log
+
+#20201225 Added: Backup backup001 to Strato
+@20231105 No more upload to Strato ## rsync --update  --progress -braz --exclude a/ -e ssh /backup/backup001 home-7927@rsync.hidrive.strato.com:/users/home-7927 >/backup/log/strato.log --delete
+
+#20210422 Added: Copy Camera files from Strato
+#20231105 No more upload to Strato ## sudo rsync --archive --human-readable --update --rsh ssh --progress home-7927@rsync.hidrive.strato.com:/users/home-7927/Camera /data/Backup >>/backup/log/strato.log
+
+#20231105 Added: Backup files to Antagonist Nextcloud
+rsync --update  --progress -braz --exclude a/ -e ssh /backup/backup001/Documenten /webdav/ >/backup/log/nextcloud1.log --delete
+rsync --update  --progress -braz --exclude a/ -e ssh /backup/backup001/Photo /webdav/ >/backup/log/nextcloud2.log --delete
+rsync --update  --progress -braz --exclude a/ -e ssh /backup/backup001/iCloud /webdav/ >/backup/log/nextcloud3.log --delete
+
+# Indien er geen files zijn gewijzigd of verwijderd wordt geen folder aangemaakt en kan deze niet verplaatst worden
+if [ -d "/backup/backup001/$SUFFIX" ]; then
+	mv /backup/backup001/$SUFFIX /backup/$SUFFIX
+fi
+
+
+php /home/pieter/info.php >/backup/log/backup_$SUFFIX.log
+cat /backup/log/rsync.log >> /backup/log/backup_$SUFFIX.log
+echo "" >> /backup/log/backup_$SUFFIX.log
+echo "Nextcloud backup" >> /backup/log/backup_$SUFFIX.log
+echo  "----------------" >> /backup/log/backup_$SUFFIX.log
+cat /backup/log/nextcloud1.log >> /backup/log/backup_$SUFFIX.log
+cat /backup/log/nextcloud2.log >> /backup/log/backup_$SUFFIX.log
+cat /backup/log/nextcloud3.log >> /backup/log/backup_$SUFFIX.log
+
+rm /backup/log/rsync.log
+rm /backup/log/nextcloud1.log
+rm /backup/log/nextcloud2.log
+rm /backup/log/nextcloud3.log
+
+mail pieter@hanselman.org -s"Backup result NNAS"< /backup/log/backup_$SUFFIX.log
+
+service openvpnas stop
+service openvpnas start
+
+#echo Backup ready.
+
+## tmp disabled next to lines (15-9-2017)
+sleep 60
+#/usr/sbin/suspend_until 23:00
+#Nu even niet naar sleep 2021/10/05 vanwege installatie ZoneMinder
+# curl --silent  "http://192.168.1.2:8080/json.htm?type=command&param=switchlight&idx=260&switchcmd=Off" >/dev/null
